@@ -68,7 +68,7 @@ Python dependencies are declared in `pyproject.toml`:
 ### Option 1: Install from PyPI (recommended)
 
 ```bash
-pip install knn-engine-core==0.1.0
+pip install knn-engine-core
 ```
 
 This installs the published package and makes `knn_core` importable.
