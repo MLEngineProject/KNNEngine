@@ -30,7 +30,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-pybind11_add_module(knn_core 
+pybind11_add_module(knn_core NO_EXTRAS
     src/binding.cpp 
     src/PCA.cpp 
     src/KNN.cpp
