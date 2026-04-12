@@ -45,7 +45,6 @@ endif()
 # 4. Define the Python Module
 pybind11_add_module(knn_core 
     src/binding.cpp 
-    src/Parser.cpp 
     src/PCA.cpp 
     src/KNN.cpp
     src/KNNEngine.cpp

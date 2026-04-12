@@ -18,14 +18,6 @@ void KNNEngine::train(const Eigen::MatrixXd& X,
             << pca->getComponentCount() << " dimensions." << std::endl;
 }
 
-bool KNNEngine::train_from_file(const std::string& csv_path, bool scale) {
-  Parser parser(csv_path, cfg.label_col);
-  if (!parser.parse()) return false;
-
-  train(parser.getFeatures(), parser.getLabels(), scale);
-  return true;
-}
-
 std::string KNNEngine::predict(const Eigen::VectorXd& raw_input) const {
   Eigen::MatrixXd projected = pca->transform(raw_input.transpose());
   return knn->predict(projected.transpose());
@@ -36,7 +28,6 @@ std::vector<std::string> KNNEngine::predict_batch(
   Eigen::MatrixXd projected = pca->transform(inputs);
   std::vector<std::string> predictions;
   for (int i = 0; i < projected.rows(); ++i) {
-    // FIX: Transpose block to Column Vector to match method signature
     predictions.push_back(knn->predict(projected.row(i).transpose()));
   }
   return predictions;
