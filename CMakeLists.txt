@@ -5,7 +5,7 @@ set(FETCHCONTENT_QUIET ON)
 
 project(KNN_ENGINE LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # This silences warnings coming from inside the included dependencies
