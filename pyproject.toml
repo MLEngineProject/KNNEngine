@@ -1,0 +1,17 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "knn-engine-core"
+version = "0.1.0"
+description = "A high-performance C++ KNN Engine with Adaptive PCA"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scikit-learn"
+]
+
+[tool.scikit-build]
+cmake.version = ">=3.18"

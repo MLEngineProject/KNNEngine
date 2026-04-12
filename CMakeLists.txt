@@ -58,9 +58,4 @@ target_include_directories(knn_core SYSTEM PRIVATE
 
 target_link_libraries(knn_core PRIVATE pybind11::module)
 
-# 6. Post-Build: Clean up the output filename for Arch
-add_custom_command(TARGET knn_core POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:knn_core>
-    ${CMAKE_SOURCE_DIR}/knn_core.so
-)
+install(TARGETS knn_core DESTINATION .)
