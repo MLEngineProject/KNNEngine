@@ -11,7 +11,6 @@ class KNN {
   void train(const Eigen::MatrixXd& training_data,
              const std::vector<std::string>& training_labels);
 
-  // Predict using vectorized distance calculations
   std::string predict(const Eigen::VectorXd& query_point) const;
 
  private:

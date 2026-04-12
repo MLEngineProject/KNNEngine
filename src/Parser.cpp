@@ -1,5 +1,6 @@
 #include "Parser.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,6 +15,8 @@ bool Parser::parse() {
   std::string line;
 
   if (std::getline(file, line)) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+
     std::stringstream ss(line);
     std::string colName;
     while (std::getline(ss, colName, ',')) {
@@ -27,6 +30,8 @@ bool Parser::parse() {
   while (std::getline(file, line)) {
     if (line.empty()) continue;
 
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+
     std::stringstream ss(line);
     std::string value;
     std::vector<double> row_features;
@@ -39,7 +44,7 @@ bool Parser::parse() {
         try {
           row_features.push_back(std::stod(value));
         } catch (...) {
-          row_features.push_back(0.0); 
+          row_features.push_back(0.0);
         }
       }
       current_col++;
@@ -51,9 +56,13 @@ bool Parser::parse() {
   int num_features = columnNames.size() - 1;
 
   features.resize(num_rows, num_features);
+  features.setZero();
   for (int i = 0; i < num_rows; ++i) {
-    features.row(i) =
-        Eigen::Map<Eigen::VectorXd>(temp_data[i].data(), num_features);
+    int actual_features =
+        std::min(static_cast<int>(temp_data[i].size()), num_features);
+    for (int j = 0; j < actual_features; ++j) {
+      features(i, j) = temp_data[i][j];
+    }
   }
 
   return true;

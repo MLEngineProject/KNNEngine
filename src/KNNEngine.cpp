@@ -8,32 +8,27 @@ KNNEngine::KNNEngine(KNNConfig config) : cfg(config) {
 }
 
 void KNNEngine::train(const Eigen::MatrixXd& X,
-                      const std::vector<std::string>& y) {
-  Eigen::MatrixXd x_reduced = pca->fit_transform(X);
+                      const std::vector<std::string>& y, bool scale) {
+  pca->fit(X, scale);
+  Eigen::MatrixXd x_reduced = pca->transform(X);
+
   knn->train(x_reduced, y);
 
-  std::cout << "[Engine] Trained directly on memory. Dimensions: "
-            << pca->getComponentCount() << std::endl;
+  std::cout << "[Engine] Trained successfully. Reduced to "
+            << pca->getComponentCount() << " dimensions." << std::endl;
 }
 
-bool KNNEngine::train_from_file(const std::string& csv_path) {
+bool KNNEngine::train_from_file(const std::string& csv_path, bool scale) {
   Parser parser(csv_path, cfg.label_col);
   if (!parser.parse()) return false;
 
-  Eigen::MatrixXd x_reduced = pca->fit_transform(parser.getFeatures());
-
-  knn->train(x_reduced, parser.getLabels());
-
-  std::cout << "[Engine] Trained successfully on " << x_reduced.rows()
-            << " samples. Reduced to " << pca->getComponentCount()
-            << " dimensions." << std::endl;
+  train(parser.getFeatures(), parser.getLabels(), scale);
   return true;
 }
 
 std::string KNNEngine::predict(const Eigen::VectorXd& raw_input) const {
-  Eigen::MatrixXd input_mat = raw_input.transpose();
-  Eigen::VectorXd projected = pca->transform(input_mat).transpose();
-  return knn->predict(projected);
+  Eigen::MatrixXd projected = pca->transform(raw_input.transpose());
+  return knn->predict(projected.transpose());
 }
 
 std::vector<std::string> KNNEngine::predict_batch(
@@ -41,7 +36,8 @@ std::vector<std::string> KNNEngine::predict_batch(
   Eigen::MatrixXd projected = pca->transform(inputs);
   std::vector<std::string> predictions;
   for (int i = 0; i < projected.rows(); ++i) {
-    predictions.push_back(knn->predict(projected.row(i)));
+    // FIX: Transpose block to Column Vector to match method signature
+    predictions.push_back(knn->predict(projected.row(i).transpose()));
   }
   return predictions;
 }

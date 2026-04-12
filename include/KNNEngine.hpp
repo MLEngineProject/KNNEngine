@@ -20,9 +20,10 @@ class KNNEngine {
  public:
   explicit KNNEngine(KNNConfig config = KNNConfig());
 
-  void train(const Eigen::MatrixXd& X, const std::vector<std::string>& y);
+  void train(const Eigen::MatrixXd& X, const std::vector<std::string>& y,
+             bool scale = false);
 
-  bool train_from_file(const std::string& csv_path);
+  bool train_from_file(const std::string& csv_path, bool scale = false);
   std::string predict(const Eigen::VectorXd& raw_input) const;
   std::vector<std::string> predict_batch(const Eigen::MatrixXd& inputs) const;
 

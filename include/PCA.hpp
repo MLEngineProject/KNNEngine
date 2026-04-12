@@ -6,7 +6,7 @@ class PCA {
   // components > 1: fixed count. components < 1: variance threshold (e.g. 0.95)
   explicit PCA(double components = 0.95);
 
-  void fit(const Eigen::MatrixXd& X);
+  void fit(const Eigen::MatrixXd& X, bool scale = false);
   Eigen::MatrixXd transform(const Eigen::MatrixXd& X) const;
   Eigen::MatrixXd fit_transform(const Eigen::MatrixXd& X);
 
@@ -18,4 +18,7 @@ class PCA {
   Eigen::RowVectorXd mean;
   Eigen::RowVectorXd std_dev;
   Eigen::MatrixXd projection_matrix;
+
+  void apply_threshold(const Eigen::VectorXd& evals,
+                       const Eigen::MatrixXd& evecs, bool is_thin_mode);
 };
