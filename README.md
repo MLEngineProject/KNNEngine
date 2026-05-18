@@ -150,13 +150,13 @@ print(pred)
 
 ## Benchmark Results
 
-The following results were produced using the provided evaluation script pattern (`examples/script.py`) with train/test split and fixed random seed.
+The following results were produced using the provided evaluation script pattern (`examples/script.py`) with train/test split and fixed random seed. Timings compare KNNEngine against an equivalent scikit-learn pipeline (PCA + KNeighborsClassifier).
 
-| Dataset | PCA Mode | Components | Accuracy |
-|---|---|---:|---:|
-| Olivetti Faces | Thin | 62 | 92.50% |
-| Iris Flower | Standard | 3 | 100.00% |
-| Handwritten Digits | Standard | 28 | 98.06% |
+| Dataset | Accuracy | KNNEngine Time | Sklearn Time | Speedup |
+|---|---:|---:|---:|---:|
+| Olivetti Faces | 92.50% | 0.238s | 0.386s | 1.62× |
+| Handwritten Digits | 98.06% | 0.020s | 0.117s | 5.82× |
+| Iris Flower | 100.00% | 0.0002s | 0.003s | 14.01× |
 
 Console logs:
 
@@ -164,17 +164,23 @@ Console logs:
 --- Testing Olivetti Faces ---
 [PCA] Fit complete. Mode: Thin | Components: 62
 [Engine] Trained successfully. Reduced to 62 dimensions.
-Accuracy: 92.50%
+KNNEngine  — Accuracy: 92.50%  |  Time: 0.2381s
+Sklearn    — Accuracy: 92.50%  |  Time: 0.3864s
+Speedup: 1.62x
 
 --- Testing Iris Flower ---
 [PCA] Fit complete. Mode: Standard | Components: 3
 [Engine] Trained successfully. Reduced to 3 dimensions.
-Accuracy: 100.00%
+KNNEngine  — Accuracy: 100.00%  |  Time: 0.0002s
+Sklearn    — Accuracy: 100.00%  |  Time: 0.0031s
+Speedup: 14.01x
 
 --- Testing Handwritten Digits ---
 [PCA] Fit complete. Mode: Standard | Components: 28
 [Engine] Trained successfully. Reduced to 28 dimensions.
-Accuracy: 98.06%
+KNNEngine  — Accuracy: 98.06%  |  Time: 0.0202s
+Sklearn    — Accuracy: 98.06%  |  Time: 0.1174s
+Speedup: 5.82x
 ```
 
 ## Running the Example Script
