@@ -29,3 +29,6 @@ Homepage = "https://github.com/YoussefMohamedIbrahim/KNNEngine"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
+
+[tool.cibuildwheel]
+skip = "*-musllinux_*"
