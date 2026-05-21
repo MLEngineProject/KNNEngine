@@ -30,7 +30,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 
 pybind11_add_module(knn_core NO_EXTRAS
     src/binding.cpp 
@@ -44,7 +44,14 @@ target_include_directories(knn_core SYSTEM PRIVATE
     ${eigen_SOURCE_DIR}
 )
 
-target_link_libraries(knn_core PRIVATE pybind11::module OpenMP::OpenMP_CXX)
+target_link_libraries(knn_core PRIVATE pybind11::module)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(knn_core PRIVATE OpenMP::OpenMP_CXX)
+    message(STATUS "OpenMP found: Multi-threading enabled.")
+else()
+    message(WARNING "OpenMP NOT found: Falling back to single-threaded mode.")
+endif()
 
 target_compile_definitions(knn_core PRIVATE EIGEN_USE_THREADS)
 
