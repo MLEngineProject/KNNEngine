@@ -154,9 +154,9 @@ The following results were produced using the provided evaluation script pattern
 
 | Dataset | Accuracy | KNNEngine Time | Sklearn Time | Speedup |
 |---|---:|---:|---:|---:|
-| Olivetti Faces | 92.50% | 0.238s | 0.386s | 1.62× |
-| Handwritten Digits | 98.06% | 0.020s | 0.117s | 5.82× |
-| Iris Flower | 100.00% | 0.0002s | 0.003s | 14.01× |
+| Olivetti Faces | 92.50% | 0.1447s | 0.3633s | 2.51× |
+| Handwritten Digits | 98.06% | 0.0231s | 0.1203s | 5.20× |
+| Iris Flower | 100.00% | 0.0004s | 0.0108s | 26.55× |
 
 Console logs:
 
@@ -164,23 +164,23 @@ Console logs:
 --- Testing Olivetti Faces ---
 [PCA] Fit complete. Mode: Thin | Components: 62
 [Engine] Trained successfully. Reduced to 62 dimensions.
-KNNEngine  — Accuracy: 92.50%  |  Time: 0.2381s
-Sklearn    — Accuracy: 92.50%  |  Time: 0.3864s
-Speedup: 1.62x
+KNNEngine  — Accuracy: 92.50%  |  Time: 0.1447s
+Sklearn    — Accuracy: 92.50%  |  Time: 0.3633s
+Speedup: 2.51x
 
 --- Testing Iris Flower ---
 [PCA] Fit complete. Mode: Standard | Components: 3
 [Engine] Trained successfully. Reduced to 3 dimensions.
-KNNEngine  — Accuracy: 100.00%  |  Time: 0.0002s
-Sklearn    — Accuracy: 100.00%  |  Time: 0.0031s
-Speedup: 14.01x
+KNNEngine  — Accuracy: 100.00%  |  Time: 0.0004s
+Sklearn    — Accuracy: 100.00%  |  Time: 0.0108s
+Speedup: 26.55x
 
 --- Testing Handwritten Digits ---
 [PCA] Fit complete. Mode: Standard | Components: 28
 [Engine] Trained successfully. Reduced to 28 dimensions.
-KNNEngine  — Accuracy: 98.06%  |  Time: 0.0202s
-Sklearn    — Accuracy: 98.06%  |  Time: 0.1174s
-Speedup: 5.82x
+KNNEngine  — Accuracy: 98.06%  |  Time: 0.0231s
+Sklearn    — Accuracy: 98.06%  |  Time: 0.1203s
+Speedup: 5.20x
 ```
 
 ## Running the Example Script

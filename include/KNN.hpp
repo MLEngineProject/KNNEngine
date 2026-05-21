@@ -18,4 +18,5 @@ class KNN {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
       train_X;
   std::vector<std::string> train_y;
+  Eigen::VectorXd train_X_sq_norms;
 };

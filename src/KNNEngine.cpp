@@ -26,9 +26,11 @@ std::string KNNEngine::predict(const Eigen::VectorXd& raw_input) const {
 std::vector<std::string> KNNEngine::predict_batch(
     const Eigen::MatrixXd& inputs) const {
   Eigen::MatrixXd projected = pca->transform(inputs);
-  std::vector<std::string> predictions;
+  std::vector<std::string> predictions(projected.rows());
+
+#pragma omp parallel for
   for (int i = 0; i < projected.rows(); ++i) {
-    predictions.push_back(knn->predict(projected.row(i).transpose()));
+    predictions[i] = knn->predict(projected.row(i).transpose());
   }
   return predictions;
 }
