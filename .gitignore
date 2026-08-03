@@ -8,6 +8,7 @@ obj/
 *.la
 *.o
 *.obj
+full_codebase.txt
 
 # --- Python ---
 __pycache__/

@@ -1,11 +1,12 @@
-name: Build and Publish to PyPI
+name: Build and Publish
 
 on:
   release:
-    types:
-      - published
+    types: [published]
+  workflow_dispatch:
 
 jobs:
+  # 1. Build standard multi-OS wheels
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -14,32 +15,104 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.17.0
-        env:
-          CIBW_BEFORE_ALL_MACOS: brew install libomp
+      - name: Create ccache directory (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: mkdir -p .ccache
 
-      - uses: actions/upload-artifact@v4
+      - name: Cache ccache (Linux/macOS)
+        if: runner.os != 'Windows'
+        uses: actions/cache@v6
         with:
-          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: .ccache
+          key: ccache-${{ matrix.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.os }}-
+
+      - name: Cache sccache (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: ${{ github.workspace }}/.sccache
+          key: sccache-${{ matrix.os }}-${{ github.sha }}
+          restore-keys: |
+            sccache-${{ matrix.os }}-
+
+      - name: Build and Test wheels
+        uses: pypa/cibuildwheel@v4.1.1
+        env:
+          CIBW_BEFORE_ALL_LINUX: yum install -y ccache openblas-devel
+          CIBW_BEFORE_ALL_MACOS: brew install libomp ccache
+          CIBW_BEFORE_ALL_WINDOWS: choco install sccache -y
+          CIBW_BUILD_FRONTEND: pip
+          CIBW_ARCHS_MACOS: arm64
+          CIBW_TEST_COMMAND: "python -c \"import knn_core; print(knn_core.__name__)\""
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
+
+          CIBW_ENVIRONMENT_LINUX: >
+            PATH="/usr/lib64/ccache:/usr/lib/ccache:$PATH"
+            CCACHE_DIR=/project/.ccache
+            CCACHE_COMPILERCHECK=content
+
+          CIBW_ENVIRONMENT_MACOS: >
+            CCACHE_DIR=${{ github.workspace }}/.ccache
+            CCACHE_COMPILERCHECK=content
+            SKBUILD_CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            ARCHFLAGS="-arch arm64"
+            MACOSX_DEPLOYMENT_TARGET="26.0"
+
+          CIBW_ENVIRONMENT_WINDOWS: >
+            SCCACHE_DIR=${{ github.workspace }}/.sccache
+
+      - name: Fix cache permissions for Docker
+        if: runner.os == 'Linux'
+        run: sudo chown -R $USER:$USER .ccache
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
+  # 2. Build Source Distribution
   build_sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build sdist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
 
+  # 3. Build Pyodide WebAssembly Wheel
+  build_wasm_wheel:
+    name: Build Pyodide WebAssembly wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Patch CMake version for Pyodide compatibility
+        run: |
+          sed -i 's/cmake\.version = ">=4.4.0"/cmake.version = ">=3.24"/g' pyproject.toml
+          sed -i 's/VERSION 4.4.0/VERSION 3.24/g' CMakeLists.txt
+
+      - name: Build Pyodide wheel
+        uses: pypa/cibuildwheel@v4.1.1
+        env:
+          CIBW_PLATFORM: pyodide
+          CIBW_TEST_COMMAND: ""
+        
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-wheel
+          path: ./wheelhouse/*.whl
+
+  # 4. Publish Standard Wheels & Source to PyPI
   publish-to-pypi:
     name: Publish Python distribution to PyPI
     needs: [build_wheels, build_sdist]
@@ -50,8 +123,8 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Download all the dists
-        uses: actions/download-artifact@v4
+      - name: Download PyPI-compatible dists
+        uses: actions/download-artifact@v8
         with:
           pattern: cibw-*
           path: dist
@@ -59,3 +132,25 @@ jobs:
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  # 5. Publish ALL Wheels & Source to GitHub Releases
+  publish-to-github-releases:
+    name: Upload all distributions to GitHub Release
+    needs: [build_wheels, build_sdist, build_wasm_wheel]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} dist/*.whl dist/*.tar.gz --clobber
