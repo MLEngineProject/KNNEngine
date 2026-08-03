@@ -28,4 +28,4 @@ Homepage = "https://github.com/MLEngineProject/KNNEngine"
 cmake.version = ">=3.18"
 
 [tool.cibuildwheel]
-skip = "*-musllinux_*"
+skip = "*-musllinux_* *-win32 *i686 cp*t-win*"
