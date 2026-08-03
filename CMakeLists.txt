@@ -50,6 +50,7 @@ endif()
 
 if(DEV_MODE)
     find_package(Eigen3 REQUIRED)
+    set(PYBIND11_FINDPYTHON ON)
     find_package(pybind11 REQUIRED)
 else()
     set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.cmake_deps" CACHE PATH "Cache fetch content" FORCE)
@@ -69,7 +70,7 @@ else()
 
     # Fetch Pybind11 (Version bumped to match NNEngine)
     if(EMSCRIPTEN)
-        # GUARD RAIL: Use Pyodide's Pybind11 if building for WASM
+        set(PYBIND11_FINDPYTHON ON)
         find_package(pybind11 REQUIRED)
     else()
         FetchContent_Declare(
