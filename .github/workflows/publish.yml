@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  # 1. Build standard multi-OS wheels
+  run_ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: write
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
+    needs: run_ci
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -17,27 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Download generated stubs
+        uses: actions/download-artifact@v8
+        with:
+          name: py-stubs
+          path: affineflow_ml/
+
       - name: Create ccache directory (Linux/macOS)
         if: runner.os != 'Windows'
         run: mkdir -p .ccache
-
-      - name: Cache ccache (Linux/macOS)
-        if: runner.os != 'Windows'
-        uses: actions/cache@v6
-        with:
-          path: .ccache
-          key: ccache-${{ matrix.os }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ matrix.os }}-
-
-      - name: Cache sccache (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/cache@v6
-        with:
-          path: ${{ github.workspace }}/.sccache
-          key: sccache-${{ matrix.os }}-${{ github.sha }}
-          restore-keys: |
-            sccache-${{ matrix.os }}-
 
       - name: Build and Test wheels
         uses: pypa/cibuildwheel@v4.1.1
@@ -47,79 +40,80 @@ jobs:
           CIBW_BEFORE_ALL_WINDOWS: choco install sccache -y
           CIBW_BUILD_FRONTEND: pip
           CIBW_ARCHS_MACOS: arm64
-          CIBW_TEST_COMMAND: "python -c \"import knn_core; print(knn_core.__name__)\""
+          CIBW_TEST_COMMAND: "python -c \"import affineflow_ml as ml; print(ml._backend)\""
           CMAKE_BUILD_PARALLEL_LEVEL: 2
-
           CIBW_ENVIRONMENT_LINUX: >
             PATH="/usr/lib64/ccache:/usr/lib/ccache:$PATH"
             CCACHE_DIR=/project/.ccache
             CCACHE_COMPILERCHECK=content
-
+            SKBUILD_CMAKE_ARGS="-DAFFINEFLOW_ML_BUILD_TESTS=OFF"
           CIBW_ENVIRONMENT_MACOS: >
             CCACHE_DIR=${{ github.workspace }}/.ccache
             CCACHE_COMPILERCHECK=content
-            SKBUILD_CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            SKBUILD_CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;-DAFFINEFLOW_ML_BUILD_TESTS=OFF"
             ARCHFLAGS="-arch arm64"
             MACOSX_DEPLOYMENT_TARGET="26.0"
-
           CIBW_ENVIRONMENT_WINDOWS: >
             SCCACHE_DIR=${{ github.workspace }}/.sccache
-
-      - name: Fix cache permissions for Docker
-        if: runner.os == 'Linux'
-        run: sudo chown -R $USER:$USER .ccache
+            SKBUILD_CMAKE_ARGS="-DAFFINEFLOW_ML_BUILD_TESTS=OFF"
 
       - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
-  # 2. Build Source Distribution
   build_sdist:
     name: Build source distribution
+    needs: run_ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
+      - name: Download generated stubs
+        uses: actions/download-artifact@v8
+        with:
+          name: py-stubs
+          path: affineflow_ml/
       - name: Build sdist
         run: pipx run build --sdist
-
       - uses: actions/upload-artifact@v7
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
 
-  # 3. Build Pyodide WebAssembly Wheel
   build_wasm_wheel:
     name: Build Pyodide WebAssembly wheel
+    needs: run_ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
+      - name: Download generated stubs
+        uses: actions/download-artifact@v8
+        with:
+          name: py-stubs
+          path: affineflow_ml/
       - name: Patch CMake version for Pyodide compatibility
         run: |
           sed -i 's/cmake\.version = ">=4.4.0"/cmake.version = ">=3.24"/g' pyproject.toml
           sed -i 's/VERSION 4.4.0/VERSION 3.24/g' CMakeLists.txt
-
       - name: Build Pyodide wheel
         uses: pypa/cibuildwheel@v4.1.1
         env:
           CIBW_PLATFORM: pyodide
           CIBW_TEST_COMMAND: ""
-        
+          CIBW_ENVIRONMENT: >
+            SKBUILD_CMAKE_ARGS="-DAFFINEFLOW_ML_BUILD_TESTS=OFF"
       - uses: actions/upload-artifact@v7
         with:
           name: wasm-wheel
           path: ./wheelhouse/*.whl
 
-  # 4. Publish Standard Wheels & Source to PyPI
   publish-to-pypi:
     name: Publish Python distribution to PyPI
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/knn-engine-core
+      url: https://pypi.org/p/AffineFlow-ML
     permissions:
       id-token: write
     steps:
@@ -129,11 +123,9 @@ jobs:
           pattern: cibw-*
           path: dist
           merge-multiple: true
-
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
-  # 5. Publish ALL Wheels & Source to GitHub Releases
   publish-to-github-releases:
     name: Upload all distributions to GitHub Release
     needs: [build_wheels, build_sdist, build_wasm_wheel]
@@ -142,13 +134,11 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
-
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

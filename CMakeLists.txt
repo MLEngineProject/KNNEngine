@@ -5,11 +5,7 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-if(POLICY CMP0169)
-    cmake_policy(SET CMP0169 OLD)
-endif()
-
-project(KNN_ENGINE LANGUAGES CXX)
+project(AffineFlow-ML LANGUAGES CXX)
 
 # --- Global Compiler & System Settings ---
 if(SKBUILD_FREE_THREADED)
@@ -28,35 +24,36 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(DEV_MODE "Use locally installed system libs for fast builds" OFF)
 
-if(EMSCRIPTEN)
-    # WebAssembly safe flags
-    add_compile_options(-O3)
+if(MSVC)
+    add_compile_options(/MP)
+elseif(APPLE)
+    add_compile_options(-O3 -ffast-math)
+    list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libomp" "/usr/local/opt/libomp")
+elseif(EMSCRIPTEN)
+    add_compile_options(-O3 -flto)
+    add_link_options(-O3 -flto)
 else()
-    # Native Hardware Flags
-    if(MSVC)
-        add_compile_options(/MP)
-    elseif(APPLE)
-        add_compile_options(-O3 -ffast-math)
-        list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libomp" "/usr/local/opt/libomp")
-    else()
+    if(DEV_MODE)
         add_compile_options(-O3 -march=native -ffast-math)
+    else()
+        add_compile_options(-O3 -ffast-math)
     endif()
 endif()
 
 # --- Dependencies ---
-if(NOT EMSCRIPTEN)
-    find_package(OpenMP)
-endif()
+find_package(OpenMP)
 
 if(DEV_MODE)
     find_package(Eigen3 REQUIRED)
-    set(PYBIND11_FINDPYTHON ON)
     find_package(pybind11 REQUIRED)
+    if(NOT APPLE AND NOT MSVC AND NOT EMSCRIPTEN)
+        find_package(BLAS REQUIRED)
+    endif()
 else()
     set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.cmake_deps" CACHE PATH "Cache fetch content" FORCE)
     include(FetchContent)
 
-    # Fetch Eigen (Version bumped to match NNEngine)
+    # Fetch Eigen
     set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
     
@@ -68,48 +65,21 @@ else()
     )
     FetchContent_MakeAvailable(eigen)
 
-    # Fetch Pybind11 (Version bumped to match NNEngine)
-    if(EMSCRIPTEN)
-        set(PYBIND11_FINDPYTHON ON)
-        find_package(pybind11 REQUIRED)
-    else()
-        FetchContent_Declare(
-            pybind11 
-            URL "https://github.com/pybind/pybind11/archive/refs/tags/v3.0.4.tar.gz"
-        )
-        FetchContent_MakeAvailable(pybind11)
+    # Fetch Pybind11
+    FetchContent_Declare(pybind11 URL "https://github.com/pybind/pybind11/archive/refs/tags/v3.0.4.tar.gz")
+    FetchContent_MakeAvailable(pybind11)
+
+    # Fetch OpenBLAS
+    if(NOT APPLE AND NOT MSVC AND NOT EMSCRIPTEN)
+        find_package(BLAS REQUIRED)
     endif()
 endif()
 
-# --- Target Definition ---
-pybind11_add_module(knn_core NO_EXTRAS
-    src/binding.cpp 
-    src/PCA.cpp 
-    src/KNN.cpp
-    src/KNNEngine.cpp
-)
+# --- Subdirectories ---
+add_subdirectory(src)
 
-# --- Include & Linking ---
-if(DEV_MODE)
-    target_link_libraries(knn_core PRIVATE Eigen3::Eigen)
-else()
-    target_include_directories(knn_core SYSTEM PRIVATE ${eigen_SOURCE_DIR})
+option(AFFINEFLOW_ML_BUILD_TESTS "Build the C++ test suite (fetches GoogleTest)" ON)
+if(AFFINEFLOW_ML_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
-
-target_include_directories(knn_core SYSTEM PRIVATE include)
-target_link_libraries(knn_core PRIVATE pybind11::module)
-
-# GUARD RAIL: Only link OpenMP if it was found AND we are not in Emscripten
-if(OpenMP_CXX_FOUND AND NOT EMSCRIPTEN)
-    target_link_libraries(knn_core PRIVATE OpenMP::OpenMP_CXX)
-    if(MSVC)
-        target_compile_options(knn_core PRIVATE /openmp:experimental)
-    endif()
-    message(STATUS "OpenMP found: Multi-threading enabled.")
-else()
-    message(WARNING "OpenMP NOT found or Emscripten detected: Falling back to single-threaded mode.")
-endif()
-
-target_compile_definitions(knn_core PRIVATE EIGEN_USE_THREADS)
-
-install(TARGETS knn_core DESTINATION .)

@@ -1,20 +1,28 @@
-#include "PCA.hpp"
+#include "ml/PCA.hpp"
 
 #include <Eigen/Dense>
 #include <algorithm>
 #include <iostream>
 
+namespace affineflow::ml {
+
 PCA::PCA(double components) : threshold(components), num_components(0) {}
 
-void PCA::fit(const Eigen::MatrixXd& X, bool scale) {
+void PCA::fit(const Eigen::Ref<const RowMatrixXd>& X, bool scale) {
+  if (X.rows() == 0 || X.cols() == 0) {
+    throw std::invalid_argument("Cannot fit PCA on empty data array.");
+  }
+  if (!X.allFinite()) {
+    throw std::invalid_argument("Input data contains NaN or Infinity values.");
+  }
   mean = X.colwise().mean();
-  Eigen::MatrixXd centered = X.rowwise() - mean;
+  RowMatrixXd centered = X.rowwise() - mean;
 
   if (scale) {
     std_dev =
         (centered.array().square().colwise().sum() / (X.rows() - 1)).sqrt();
     std_dev = std_dev.unaryExpr([](double v) { return v < 1e-9 ? 1.0 : v; });
-    centered = centered.array().rowwise() / std_dev.array();
+    centered.array().rowwise() /= std_dev.array();
   } else {
     std_dev = Eigen::RowVectorXd::Ones(X.cols());
   }
@@ -69,20 +77,25 @@ void PCA::apply_threshold(const Eigen::VectorXd& evals,
   }
 
   projection_matrix = evecs.leftCols(num_components);
-  std::cout << "[PCA] Fit complete. Mode: "
-            << (is_thin_mode ? "Thin" : "Standard")
-            << " | Components: " << num_components << std::endl;
 }
 
-Eigen::MatrixXd PCA::transform(const Eigen::MatrixXd& X) const {
-  Eigen::MatrixXd centered = X.rowwise() - mean;
-
-  Eigen::MatrixXd standardized = centered.array().rowwise() / std_dev.array();
-
+RowMatrixXd PCA::transform(const Eigen::Ref<const RowMatrixXd>& X) const {
+  if (X.cols() != mean.size()) {
+    throw std::invalid_argument("Feature dimension mismatch. Expected " +
+                                std::to_string(mean.size()));
+  }
+  if (!X.allFinite()) {
+    throw std::invalid_argument("Input data contains NaN or Infinity values.");
+  }
+  RowMatrixXd centered = X.rowwise() - mean;
+  RowMatrixXd standardized = centered.array().rowwise() / std_dev.array();
   return standardized * projection_matrix;
 }
 
-Eigen::MatrixXd PCA::fit_transform(const Eigen::MatrixXd& X) {
-  fit(X);
+RowMatrixXd PCA::fit_transform(const Eigen::Ref<const RowMatrixXd>& X,
+                               bool scale) {
+  fit(X, scale);
   return transform(X);
 }
+
+}  // namespace affineflow::ml

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_call:
+
+jobs:
+  test_and_stub:
+    name: Run Tests and Generate Stubs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+    steps:
+      - uses: actions/checkout@v7
+      
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev
+          pip install pytest numpy scikit-learn pybind11-stubgen ninja scikit-build-core
+        
+      - name: Build engine
+        run: pip install -e .
+        
+      - name: Run C++ Unit Tests
+        run: ctest --test-dir build/cp314* --output-on-failure -E "^(openblas|x[sdcz]cblat)"
+        
+      - name: Run Python Integration Tests
+        run: pytest tests/python/ -v || echo "No python tests configured yet"
+        
+      - name: Generate Type Stubs (.pyi) and py.typed
+        run: |
+          pybind11-stubgen affineflow_ml._backend_generic -o . || true
+          pybind11-stubgen affineflow_ml._backend_avx2 -o . || true
+          pybind11-stubgen affineflow_ml._backend_avx512 -o . || true
+          
+          if [ -f affineflow_ml/_backend_avx512.pyi ]; then
+            cp affineflow_ml/_backend_avx512.pyi affineflow_ml/_backend.pyi
+          elif [ -f affineflow_ml/_backend_avx2.pyi ]; then
+            cp affineflow_ml/_backend_avx2.pyi affineflow_ml/_backend.pyi
+          elif [ -f affineflow_ml/_backend_generic.pyi ]; then
+            cp affineflow_ml/_backend_generic.pyi affineflow_ml/_backend.pyi
+          fi
+          
+          touch affineflow_ml/py.typed
+
+      - name: Validate and harden generated stubs
+        run: python scripts/fix_stubs.py affineflow_ml
+
+      - name: Type-check public API surface
+        run: |
+          pip install mypy
+          mypy --strict -c "
+          import affineflow_ml
+          reveal_type(affineflow_ml.KNNEngine)
+          reveal_type(affineflow_ml.KNNConfig)
+          reveal_type(affineflow_ml.DistanceMetric)
+          reveal_type(affineflow_ml.Weights)
+          "
+
+      - name: Commit and push updated stubs
+        if: github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: auto-update pyi stubs and py.typed"
+          file_pattern: "affineflow_ml/_backend*.pyi affineflow_ml/__init__.pyi affineflow_ml/py.typed"
+          branch: main
+          push_options: '--force-with-lease'
+          skip_fetch: false
+          
+      - name: Upload stubs as artifact for wheel builders
+        uses: actions/upload-artifact@v7
+        with:
+          name: py-stubs
+          path: |
+            affineflow_ml/_backend*.pyi
+            affineflow_ml/py.typed

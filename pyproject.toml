@@ -6,30 +6,47 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "knn-engine-core"
-version = "0.1.4"
-description = "A high-performance C++ KNN Engine with Adaptive PCA"
+name = "AffineFlow-ML"
+version = "0.1.0"
+description = "A high-performance C++ Machine Learning backend for AffineFlow"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 requires-python = ">=3.12"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "License :: OSI Approved :: MIT License"
+
+authors = [
+    { name = "Youssef Mohamed" }
 ]
+
 dependencies = [
     "numpy",
     "scikit-learn"
 ]
+keywords = ["machine-learning", "knn", "pca", "c++", "eigen"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed"
+]
 
 [project.urls]
-Homepage = "https://github.com/AffineFlow/KNNEngine"
-Tracker = "https://github.com/AffineFlow/KNNEngine/issues"
+Homepage = "https://github.com/AffineFlow/AffineFlow-ML"
+Tracker = "https://github.com/AffineFlow/AffineFlow-ML/issues"
 
 [tool.scikit-build]
 cmake.version = ">=4.4.0"
+wheel.install-dir = "."
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["affineflow_ml"]
 
 [tool.cibuildwheel]
 skip = "*-musllinux_* *-win32 *i686 cp*t-win*"
+test-requires = ["pytest", "numpy"]
+test-command = "pytest {project}/tests/python"
