@@ -18,8 +18,7 @@ authors = [
 ]
 
 dependencies = [
-    "numpy",
-    "scikit-learn"
+    "numpy"
 ]
 keywords = ["machine-learning", "knn", "pca", "c++", "eigen"]
 classifiers = [
