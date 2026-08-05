@@ -59,8 +59,8 @@ jobs:
           pip install mypy
           mypy --strict -c "
           import affineflow_ml
-          reveal_type(affineflow_ml.KNNEngine)
-          reveal_type(affineflow_ml.KNNConfig)
+          reveal_type(affineflow_ml.KNeighborsClassifier)
+          reveal_type(affineflow_ml.PCA)
           reveal_type(affineflow_ml.DistanceMetric)
           reveal_type(affineflow_ml.Weights)
           "
